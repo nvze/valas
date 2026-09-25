@@ -3,41 +3,41 @@ import requests
 
 app = Flask(__name__)
 
-# API Key Finnhub Anda
-FINNHUB_API_KEY = 'darc61hr01qn6lve6mm0'
-
 @app.route('/api/harga/<pair>')
 def get_harga(pair):
     pair_upper = pair.upper()
     
-    # Mengubah format pair ke standar Finnhub (menggunakan data OANDA)
+    # Menyesuaikan simbol dengan format Yahoo Finance
     if pair_upper == 'EURUSD':
-        finnhub_symbol = 'OANDA:EUR_USD'
-        spread = 0.0002 # Spread simulasi 2 pips
+        yahoo_symbol = 'EURUSD=X'
+        spread = 0.0002
     elif pair_upper == 'XAUUSD':
-        finnhub_symbol = 'OANDA:XAU_USD'
-        spread = 0.50   # Spread simulasi 50 cents
+        yahoo_symbol = 'XAUUSD=X'  # Simbol Emas Spot di Yahoo
+        spread = 0.50
     else:
-        # Jika Anda menambah pair lain (misal GBPUSD), otomatis jadi OANDA:GBP_USD
-        finnhub_symbol = f'OANDA:{pair_upper[:3]}_{pair_upper[3:]}'
-        spread = 0.0003
+        # Jika Anda menambahkan GBPUSD, USDJPY, dll
+        yahoo_symbol = f'{pair_upper}=X'
+        spread = 0.0005
 
-    # URL Endpoint API Finnhub
-    url = f'https://finnhub.io/api/v1/quote?symbol={finnhub_symbol}&token={FINNHUB_API_KEY}'
+    # Endpoint rahasia Yahoo Finance Chart API (Gratis & Tanpa Key)
+    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}?region=US&lang=en-US'
+    
+    # Yahoo Finance mewajibkan "User-Agent" agar tidak diblokir
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     
     try:
-        # Menarik data dari Finnhub
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         data = response.json()
         
-        # 'c' adalah Current Price (Harga saat ini) dari Finnhub
-        current_price = data.get('c')
+        # Mengambil harga saat ini (regularMarketPrice) dari struktur JSON Yahoo
+        result = data['chart']['result'][0]
+        current_price = result['meta']['regularMarketPrice']
         
-        # Validasi jika pasar sedang tutup akhir pekan atau API limit
-        if current_price is None or current_price == 0:
-            return jsonify({"error": "Data tertunda / pasar tutup"})
+        if not current_price:
+            return jsonify({"error": "Harga tidak ditemukan di server"})
 
-        # Mengembalikan format JSON Bid & Ask ke Web HTML Anda
         return jsonify({
             "symbol": pair_upper,
             "bid": current_price,
@@ -45,8 +45,8 @@ def get_harga(pair):
         })
         
     except Exception as e:
-        return jsonify({"error": "Gagal terhubung ke server harga"})
+        # Menampilkan detail error jika gagal agar mudah dilacak
+        return jsonify({"error": f"Gagal mengambil data dari Yahoo"})
 
-# Wajib ada untuk lingkungan Vercel Serverless
 if __name__ == '__main__':
     app.run()
