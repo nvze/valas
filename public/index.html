@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Valas & Gold</title>
-    <!-- Framework Bootstrap untuk layout responsif di HP -->
+    <title>Live Valas: USD/IDR & EUR/USD</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { 
@@ -23,10 +23,10 @@
             transition: all 0.3s ease;
         }
         .bid-ask { font-size: 2.2rem; font-weight: bold; font-family: monospace; }
-        .bid { color: #ff4d4d; } /* Merah Jual */
-        .ask { color: #00e676; } /* Hijau Beli */
+        .bid { color: #ff4d4d; } /* Merah */
+        .ask { color: #00e676; } /* Hijau */
         
-        /* Efek Kedip saat harga update */
+        /* Efek Kedip */
         .flash { animation: flash-bg 0.5s; }
         @keyframes flash-bg {
             0% { background-color: #3d3d3d; }
@@ -40,21 +40,21 @@
     <h3 class="text-center mb-4">Monitor Harga Live</h3>
     
     <div class="row justify-content-center">
-        <!-- Kotak Harga Emas (XAUUSD) -->
+        <!-- Kotak Harga Rupiah (USDIDR) -->
         <div class="col-12 col-md-6 col-lg-5 mb-4">
-            <div class="price-box" id="box-xauusd">
-                <h4 class="mb-3" style="color: #ffd700;">XAU/USD (Gold)</h4>
+            <div class="price-box" id="box-usdidr">
+                <h4 class="mb-3" style="color: #ffd700;">USD/IDR (Rupiah)</h4>
                 <div class="d-flex justify-content-between">
                     <div>
                         <small class="text-muted d-block mb-1">BID (Jual)</small>
-                        <div class="bid-ask bid" id="bid-xauusd">---</div>
+                        <div class="bid-ask bid" id="bid-usdidr">---</div>
                     </div>
                     <div>
                         <small class="text-muted d-block mb-1">ASK (Beli)</small>
-                        <div class="bid-ask ask" id="ask-xauusd">---</div>
+                        <div class="bid-ask ask" id="ask-usdidr">---</div>
                     </div>
                 </div>
-                <div class="mt-2 text-danger small" id="err-xauusd"></div>
+                <div class="mt-2 text-danger small" id="err-usdidr"></div>
             </div>
         </div>
 
@@ -83,38 +83,45 @@
         fetch(`/api/harga/${pair}`)
             .then(response => response.json())
             .then(data => {
-                // Tangkap error jika ada
+                // Tangani pesan error dari server
                 if(data.error) {
                     document.getElementById(`err-${pair.toLowerCase()}`).innerText = data.error;
                     return;
                 }
                 
-                // Bersihkan pesan error jika sukses
                 document.getElementById(`err-${pair.toLowerCase()}`).innerText = "";
                 
-                // Masukkan angka ke HTML
-                document.getElementById(`bid-${pair.toLowerCase()}`).innerText = data.bid;
-                document.getElementById(`ask-${pair.toLowerCase()}`).innerText = data.ask;
+                let finalBid = data.bid;
+                let finalAsk = data.ask;
                 
-                // Efek kedip (flash) menandakan data baru masuk
+                // Jika pair adalah IDR, gunakan pemisah ribuan
+                if(pair === 'USDIDR') {
+                    finalBid = new Intl.NumberFormat('id-ID').format(data.bid);
+                    finalAsk = new Intl.NumberFormat('id-ID').format(data.ask);
+                }
+
+                // Tampilkan angka ke dalam HTML
+                document.getElementById(`bid-${pair.toLowerCase()}`).innerText = finalBid;
+                document.getElementById(`ask-${pair.toLowerCase()}`).innerText = finalAsk;
+                
+                // Memicu animasi berkedip
                 const box = document.getElementById(`box-${pair.toLowerCase()}`);
                 box.classList.remove('flash');
-                void box.offsetWidth; // Trigger DOM Reflow
+                void box.offsetWidth;
                 box.classList.add('flash');
             })
             .catch(error => console.error('Gagal mengambil data:', error));
     }
 
-    // Refresh harga tiap 3 detik 
-    // (Finnhub membatasi 60 request/menit untuk akun gratis)
+    // Refresh data secara berkala (3 detik)
     setInterval(() => {
-        fetchLivePrice('XAUUSD');
-        // Jeda 1.5 detik antara XAU dan EUR agar API tidak dibanjiri request bersamaan
+        fetchLivePrice('USDIDR');
+        // Beri jeda antar pemanggilan agar tidak ditolak server (rate limit)
         setTimeout(() => fetchLivePrice('EURUSD'), 1500); 
     }, 3000);
     
-    // Panggilan pertama saat web baru dibuka
-    fetchLivePrice('XAUUSD');
+    // Tarikan data pertama kali halaman dimuat
+    fetchLivePrice('USDIDR');
     setTimeout(() => fetchLivePrice('EURUSD'), 1500);
 </script>
 
