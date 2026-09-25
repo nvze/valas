@@ -4,7 +4,7 @@ import requests
 app = Flask(__name__)
 
 # API Key Finnhub Anda
-FINNHUB_API_KEY = 'darbl8pr01qn6lve0s5gdarbl8pr01qn6lve0s60'
+FINNHUB_API_KEY = 'darc61hr01qn6lve6mmg'
 
 @app.route('/api/harga/<pair>')
 def get_harga(pair):
